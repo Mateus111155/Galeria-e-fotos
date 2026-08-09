@@ -1,11 +1,11 @@
 {
   "name": "foto-galeria",
   "version": "1.0.0",
-  "description": "Plataforma de galerias profissionais para fotógrafos",
+  "description": "Sistema profissional de galeria de fotos",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node server.js"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
