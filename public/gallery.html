@@ -1,1 +1,428 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
 
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Galeria de Fotos</title>
+
+    <link
+        rel="stylesheet"
+        href="/style.css"
+    >
+
+</head>
+
+<body>
+
+<header class="galleryHeader">
+
+    <div>
+
+        <h1 id="galleryName">
+            Carregando...
+        </h1>
+
+        <p>
+            Selecione ❤️ as fotos que deseja.
+        </p>
+
+    </div>
+
+    <div class="selectedCount">
+
+        Selecionadas:
+
+        <strong id="selectedCount">
+            0
+        </strong>
+
+    </div>
+
+</header>
+
+
+<main
+    id="photos"
+    class="photoGrid"
+>
+
+    <p>
+        Carregando fotos...
+    </p>
+
+</main>
+
+
+<script>
+
+/*
+|--------------------------------------------------------------------------
+| IDENTIFICAR GALERIA
+|--------------------------------------------------------------------------
+*/
+
+const galleryId =
+    location.pathname
+        .split("/")
+        .pop();
+
+
+/*
+|--------------------------------------------------------------------------
+| IDENTIFICAR CLIENTE
+|--------------------------------------------------------------------------
+*/
+
+const clientId =
+    getClientId();
+
+
+let selectedPhotos =
+    new Set();
+
+
+/*
+|--------------------------------------------------------------------------
+| INICIAR
+|--------------------------------------------------------------------------
+*/
+
+loadGallery();
+
+
+/*
+|--------------------------------------------------------------------------
+| CRIAR ID DO CLIENTE
+|--------------------------------------------------------------------------
+*/
+
+function getClientId() {
+
+    let id =
+        localStorage.getItem(
+            "clientId"
+        );
+
+
+    if (!id) {
+
+        id =
+            crypto.randomUUID();
+
+
+        localStorage.setItem(
+            "clientId",
+            id
+        );
+
+    }
+
+
+    return id;
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| CARREGAR GALERIA
+|--------------------------------------------------------------------------
+*/
+
+async function loadGallery() {
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/gallery/${galleryId}`
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            document.body.innerHTML = `
+                <div class="container">
+
+                    <h1>
+                        Galeria não encontrada
+                    </h1>
+
+                    <p>
+                        Verifique se o link
+                        está correto.
+                    </p>
+
+                </div>
+            `;
+
+            return;
+
+        }
+
+
+        document
+            .getElementById(
+                "galleryName"
+            )
+            .textContent =
+                data.gallery.name;
+
+
+        const container =
+            document
+                .getElementById(
+                    "photos"
+                );
+
+
+        container.innerHTML = "";
+
+
+        if (
+            data.photos.length === 0
+        ) {
+
+            container.innerHTML = `
+                <div class="galleryCard">
+
+                    <h2>
+                        Nenhuma foto ainda
+                    </h2>
+
+                    <p>
+                        O fotógrafo ainda não
+                        adicionou fotos nesta galeria.
+                    </p>
+
+                </div>
+            `;
+
+            return;
+
+        }
+
+
+        data.photos.forEach(
+            photo => {
+
+                const card =
+                    document.createElement(
+                        "article"
+                    );
+
+
+                card.className =
+                    "photoCard";
+
+
+                card.innerHTML = `
+
+                    <div class="photoImage">
+
+                        <img
+                            src="${photo.url}"
+                            alt="Fotografia"
+                            loading="lazy"
+                        >
+
+
+                        <button
+                            class="favorite"
+                            type="button"
+                            onclick="
+                                selectPhoto(
+                                    '${photo.id}',
+                                    this
+                                )
+                            "
+                            aria-label="Selecionar foto"
+                        >
+                            ♡
+                        </button>
+
+                    </div>
+
+
+                    <a
+                        class="download"
+                        href="/api/photos/${photo.id}/download"
+                    >
+                        Baixar com marca d'água
+                    </a>
+
+                `;
+
+
+                container.appendChild(
+                    card
+                );
+
+            }
+        );
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        document
+            .getElementById(
+                "photos"
+            )
+            .innerHTML = `
+                <div class="galleryCard">
+
+                    <h2>
+                        Erro ao carregar
+                    </h2>
+
+                    <p>
+                        Não foi possível carregar
+                        esta galeria.
+                    </p>
+
+                </div>
+            `;
+
+    }
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| SELECIONAR FOTO
+|--------------------------------------------------------------------------
+*/
+
+async function selectPhoto(
+    photoId,
+    button
+) {
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/photos/${photoId}/select`,
+                {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+                            clientId
+                        })
+
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            alert(
+                data.error ||
+                "Não foi possível selecionar a foto."
+            );
+
+            return;
+
+        }
+
+
+        if (data.selected) {
+
+            selectedPhotos.add(
+                photoId
+            );
+
+
+            button.textContent =
+                "♥";
+
+
+            button.classList.add(
+                "active"
+            );
+
+        }
+
+        else {
+
+            selectedPhotos.delete(
+                photoId
+            );
+
+
+            button.textContent =
+                "♡";
+
+
+            button.classList.remove(
+                "active"
+            );
+
+        }
+
+
+        updateSelectedCount();
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        alert(
+            "Erro ao selecionar a foto."
+        );
+
+    }
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| ATUALIZAR CONTADOR
+|--------------------------------------------------------------------------
+*/
+
+function updateSelectedCount() {
+
+    document
+        .getElementById(
+            "selectedCount"
+        )
+        .textContent =
+            selectedPhotos.size;
+
+}
+
+</script>
+
+</body>
+
+</html>
