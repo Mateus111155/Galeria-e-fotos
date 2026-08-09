@@ -1,1 +1,684 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
 
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Painel do Fotógrafo</title>
+
+    <link
+        rel="stylesheet"
+        href="/style.css"
+    >
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- LOGIN -->
+
+    <div id="login">
+
+        <h1>Painel do fotógrafo</h1>
+
+        <p>
+            Entre para administrar suas galerias.
+        </p>
+
+        <input
+            id="password"
+            type="password"
+            placeholder="Digite sua senha"
+        >
+
+        <button
+            class="button"
+            onclick="login()"
+        >
+            Entrar
+        </button>
+
+        <p id="loginMessage"></p>
+
+    </div>
+
+
+    <!-- PAINEL -->
+
+    <div
+        id="dashboard"
+        class="hidden"
+    >
+
+        <header class="adminHeader">
+
+            <div>
+
+                <h1>
+                    Minhas galerias
+                </h1>
+
+                <p>
+                    Gerencie seus eventos e fotos.
+                </p>
+
+            </div>
+
+            <button
+                class="button"
+                onclick="logout()"
+            >
+                Sair
+            </button>
+
+        </header>
+
+
+        <!-- CRIAR GALERIA -->
+
+        <section class="createBox">
+
+            <h2>
+                Nova galeria
+            </h2>
+
+            <p>
+                Crie uma galeria para cada evento
+                ou ensaio.
+            </p>
+
+            <input
+                id="galleryName"
+                type="text"
+                placeholder="Ex: Casamento João e Maria"
+            >
+
+            <button
+                class="button"
+                onclick="createGallery()"
+            >
+                Criar galeria
+            </button>
+
+        </section>
+
+
+        <!-- GALERIAS -->
+
+        <section>
+
+            <h2>
+                Minhas galerias
+            </h2>
+
+            <div
+                id="galleries"
+                class="galleryList"
+            ></div>
+
+        </section>
+
+    </div>
+
+</div>
+
+
+<script>
+
+let token =
+    localStorage.getItem(
+        "adminToken"
+    );
+
+
+/*
+|--------------------------------------------------------------------------
+| VERIFICAR LOGIN
+|--------------------------------------------------------------------------
+*/
+
+if (token) {
+
+    showDashboard();
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| LOGIN
+|--------------------------------------------------------------------------
+*/
+
+async function login() {
+
+    const password =
+        document
+            .getElementById("password")
+            .value;
+
+    if (!password) {
+
+        document
+            .getElementById("loginMessage")
+            .textContent =
+                "Digite sua senha.";
+
+        return;
+
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/login",
+                {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+                            password
+                        })
+
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            document
+                .getElementById(
+                    "loginMessage"
+                )
+                .textContent =
+                    data.error ||
+                    "Erro ao entrar.";
+
+            return;
+
+        }
+
+
+        token =
+            data.token;
+
+
+        localStorage.setItem(
+            "adminToken",
+            token
+        );
+
+
+        showDashboard();
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        document
+            .getElementById(
+                "loginMessage"
+            )
+            .textContent =
+                "Não foi possível conectar ao servidor.";
+
+    }
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| MOSTRAR PAINEL
+|--------------------------------------------------------------------------
+*/
+
+function showDashboard() {
+
+    document
+        .getElementById("login")
+        .classList
+        .add("hidden");
+
+
+    document
+        .getElementById("dashboard")
+        .classList
+        .remove("hidden");
+
+
+    loadGalleries();
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| SAIR
+|--------------------------------------------------------------------------
+*/
+
+function logout() {
+
+    localStorage.removeItem(
+        "adminToken"
+    );
+
+    location.reload();
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| CARREGAR GALERIAS
+|--------------------------------------------------------------------------
+*/
+
+async function loadGalleries() {
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/galleries",
+                {
+
+                    headers: {
+
+                        Authorization:
+                            `Bearer ${token}`
+
+                    }
+
+                }
+            );
+
+
+        if (!response.ok) {
+
+            logout();
+
+            return;
+
+        }
+
+
+        const galleries =
+            await response.json();
+
+
+        const container =
+            document
+                .getElementById(
+                    "galleries"
+                );
+
+
+        container.innerHTML = "";
+
+
+        if (galleries.length === 0) {
+
+            container.innerHTML = `
+                <div class="galleryCard">
+
+                    <h3>
+                        Nenhuma galeria ainda
+                    </h3>
+
+                    <p>
+                        Crie sua primeira galeria
+                        acima.
+                    </p>
+
+                </div>
+            `;
+
+            return;
+
+        }
+
+
+        galleries.forEach(
+            gallery => {
+
+                const card =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                card.className =
+                    "galleryCard";
+
+
+                card.innerHTML = `
+
+                    <h3>
+                        ${escapeHtml(
+                            gallery.name
+                        )}
+                    </h3>
+
+                    <p>
+                        Criada em:
+                        ${new Date(
+                            gallery.createdAt
+                        ).toLocaleDateString(
+                            "pt-BR"
+                        )}
+                    </p>
+
+
+                    <div class="actions">
+
+                        <a
+                            class="button"
+                            href="/galeria/${gallery.id}"
+                            target="_blank"
+                        >
+                            Abrir galeria
+                        </a>
+
+
+                        <label
+                            class="uploadButton"
+                        >
+
+                            Adicionar fotos
+
+                            <input
+                                type="file"
+                                multiple
+                                accept="image/jpeg,image/png,image/webp"
+                                onchange="
+                                    uploadPhotos(
+                                        '${gallery.id}',
+                                        this.files
+                                    )
+                                "
+                            >
+
+                        </label>
+
+                    </div>
+
+
+                    <p>
+                        <strong>
+                            Link da galeria:
+                        </strong>
+                    </p>
+
+
+                    <input
+                        type="text"
+                        readonly
+                        value="${location.origin}/galeria/${gallery.id}"
+                        onclick="this.select()"
+                    >
+
+                `;
+
+
+                container.appendChild(
+                    card
+                );
+
+            }
+        );
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        alert(
+            "Erro ao carregar as galerias."
+        );
+
+    }
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| CRIAR GALERIA
+|--------------------------------------------------------------------------
+*/
+
+async function createGallery() {
+
+    const input =
+        document
+            .getElementById(
+                "galleryName"
+            );
+
+
+    const name =
+        input.value.trim();
+
+
+    if (!name) {
+
+        alert(
+            "Digite o nome da galeria."
+        );
+
+        return;
+
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/galleries",
+                {
+
+                    method: "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json",
+
+                        Authorization:
+                            `Bearer ${token}`
+
+                    },
+
+                    body:
+                        JSON.stringify({
+                            name
+                        })
+
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            alert(
+                data.error ||
+                "Erro ao criar galeria."
+            );
+
+            return;
+
+        }
+
+
+        input.value = "";
+
+
+        await loadGalleries();
+
+
+        alert(
+            "Galeria criada com sucesso!"
+        );
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        alert(
+            "Erro ao criar galeria."
+        );
+
+    }
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| UPLOAD DE FOTOS
+|--------------------------------------------------------------------------
+*/
+
+async function uploadPhotos(
+    galleryId,
+    files
+) {
+
+    if (!files || files.length === 0) {
+        return;
+    }
+
+
+    const formData =
+        new FormData();
+
+
+    for (
+        const file of files
+    ) {
+
+        formData.append(
+            "photos",
+            file
+        );
+
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/galleries/${galleryId}/photos`,
+                {
+
+                    method: "POST",
+
+                    headers: {
+
+                        Authorization:
+                            `Bearer ${token}`
+
+                    },
+
+                    body: formData
+
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            alert(
+                data.error ||
+                "Erro ao enviar fotos."
+            );
+
+            return;
+
+        }
+
+
+        alert(
+            `${data.photos.length} foto(s) enviada(s) com sucesso!`
+        );
+
+
+        await loadGalleries();
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        alert(
+            "Erro ao enviar as fotos."
+        );
+
+    }
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| SEGURANÇA DO TEXTO
+|--------------------------------------------------------------------------
+*/
+
+function escapeHtml(text) {
+
+    const div =
+        document.createElement(
+            "div"
+        );
+
+    div.textContent =
+        text;
+
+    return div.innerHTML;
+
+}
+
+</script>
+
+</body>
+
+</html>
