@@ -1,1 +1,392 @@
 
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #f7f7f8;
+    color: #171717;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+button,
+input {
+    font: inherit;
+}
+
+/* HEADER */
+
+.header,
+.galleryHeader,
+.adminHeader {
+    padding: 22px 5%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+
+    background: white;
+    border-bottom: 1px solid #eeeeee;
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.logo span {
+    color: #6c4cff;
+}
+
+/* BOTÕES */
+
+.button {
+    display: inline-block;
+
+    border: 0;
+    background: #6c4cff;
+    color: white;
+
+    padding: 12px 18px;
+
+    border-radius: 10px;
+
+    cursor: pointer;
+
+    font-weight: 700;
+
+    text-decoration: none;
+}
+
+.button:hover {
+    background: #5737e8;
+}
+
+.button.big {
+    padding: 16px 28px;
+    font-size: 17px;
+}
+
+/* HOME */
+
+.hero {
+    min-height: 80vh;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 50px 20px;
+
+    text-align: center;
+}
+
+.hero h1 {
+    font-size: clamp(45px, 8vw, 90px);
+
+    line-height: 0.95;
+
+    max-width: 900px;
+
+    margin: 20px auto;
+}
+
+.hero h1 span {
+    color: #6c4cff;
+}
+
+.description {
+    color: #666666;
+
+    font-size: 19px;
+
+    max-width: 600px;
+
+    margin: 25px auto;
+}
+
+.badge {
+    color: #6c4cff;
+
+    font-weight: bold;
+
+    letter-spacing: 2px;
+}
+
+/* CONTAINER */
+
+.container {
+    max-width: 1200px;
+
+    margin: auto;
+
+    padding: 40px 20px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* LOGIN */
+
+#login {
+    max-width: 420px;
+
+    margin: 80px auto;
+
+    background: white;
+
+    padding: 30px;
+
+    border-radius: 20px;
+
+    box-shadow:
+        0 10px 40px rgba(0, 0, 0, 0.05);
+}
+
+/* INPUT */
+
+input {
+    width: 100%;
+
+    border: 1px solid #dddddd;
+
+    padding: 14px;
+
+    border-radius: 10px;
+
+    margin: 8px 0 15px;
+
+    outline: none;
+}
+
+input:focus {
+    border-color: #6c4cff;
+}
+
+/* CRIAR GALERIA */
+
+.createBox {
+    background: white;
+
+    padding: 25px;
+
+    margin: 30px 0;
+
+    border-radius: 16px;
+}
+
+/* LISTA DE GALERIAS */
+
+.galleryList {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            auto-fill,
+            minmax(280px, 1fr)
+        );
+
+    gap: 20px;
+}
+
+.galleryCard {
+    background: white;
+
+    padding: 22px;
+
+    border-radius: 16px;
+
+    border: 1px solid #eeeeee;
+}
+
+.galleryCard h3 {
+    margin-top: 0;
+}
+
+.actions {
+    display: flex;
+
+    gap: 10px;
+
+    flex-wrap: wrap;
+
+    margin: 20px 0;
+}
+
+/* UPLOAD */
+
+.uploadButton {
+    background: #111111;
+
+    color: white;
+
+    padding: 12px 18px;
+
+    border-radius: 10px;
+
+    cursor: pointer;
+
+    font-weight: 700;
+}
+
+.uploadButton input {
+    display: none;
+}
+
+/* GALERIA */
+
+.galleryHeader {
+    position: sticky;
+
+    top: 0;
+
+    z-index: 10;
+}
+
+.photoGrid {
+    padding: 30px;
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            auto-fill,
+            minmax(260px, 1fr)
+        );
+
+    gap: 18px;
+}
+
+/* FOTO */
+
+.photoCard {
+    background: white;
+
+    border-radius: 16px;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 5px 25px rgba(0, 0, 0, 0.05);
+}
+
+.photoImage {
+    position: relative;
+
+    aspect-ratio: 4 / 3;
+
+    background: #dddddd;
+
+    overflow: hidden;
+}
+
+.photoImage img {
+    width: 100%;
+
+    height: 100%;
+
+    object-fit: cover;
+
+    display: block;
+}
+
+/* FAVORITO */
+
+.favorite {
+    position: absolute;
+
+    top: 12px;
+
+    right: 12px;
+
+    width: 46px;
+
+    height: 46px;
+
+    border: 0;
+
+    border-radius: 50%;
+
+    background: white;
+
+    color: #111111;
+
+    font-size: 28px;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 5px 20px rgba(0, 0, 0, 0.2);
+}
+
+.favorite.active {
+    color: #e72f65;
+}
+
+/* DOWNLOAD */
+
+.download {
+    display: block;
+
+    padding: 15px;
+
+    font-weight: 700;
+
+    text-align: center;
+}
+
+.download:hover {
+    background: #f3f3f3;
+}
+
+/* CONTADOR */
+
+.selectedCount {
+    background: #f2efff;
+
+    color: #5737e8;
+
+    padding: 10px 15px;
+
+    border-radius: 10px;
+}
+
+/* CELULAR */
+
+@media (max-width: 700px) {
+
+    .header,
+    .galleryHeader,
+    .adminHeader {
+        align-items: flex-start;
+
+        flex-direction: column;
+    }
+
+    .photoGrid {
+        padding: 15px;
+
+        grid-template-columns:
+            repeat(2, 1fr);
+
+        gap: 8px;
+    }
+
+    .photoCard {
+        border-radius: 10px;
+    }
+
+    .download {
+        font-size: 12px;
+
+        padding: 10px;
+    }
+
+}
