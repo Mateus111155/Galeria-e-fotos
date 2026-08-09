@@ -4,17 +4,36 @@ const sharp = require("sharp");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+
 require("dotenv").config();
 
 const app = express();
+
 const PORT = process.env.PORT || 3000;
 
 const ROOT = __dirname;
 
 const DATA_DIR = path.join(ROOT, "data");
-const ORIGINALS_DIR = path.join(ROOT, "storage", "originals");
-const WATERMARK_DIR = path.join(ROOT, "storage", "watermarked");
-const TEMP_DIR = path.join(ROOT, "temp");
+const ORIGINALS_DIR = path.join(
+  ROOT,
+  "storage",
+  "originals"
+);
+const WATERMARK_DIR = path.join(
+  ROOT,
+  "storage",
+  "watermarked"
+);
+const TEMP_DIR = path.join(
+  ROOT,
+  "temp"
+);
+
+/*
+|--------------------------------------------------------------------------
+| CRIAR PASTAS
+|--------------------------------------------------------------------------
+*/
 
 [
   DATA_DIR,
@@ -22,33 +41,88 @@ const TEMP_DIR = path.join(ROOT, "temp");
   WATERMARK_DIR,
   TEMP_DIR
 ].forEach((dir) => {
-  fs.mkdirSync(dir, { recursive: true });
+  fs.mkdirSync(dir, {
+    recursive: true
+  });
 });
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+/*
+|--------------------------------------------------------------------------
+| CONFIGURAÇÃO
+|--------------------------------------------------------------------------
+*/
 
-app.use(express.static(path.join(ROOT, "public")));
+app.use(express.json());
+
+app.use(
+  express.urlencoded({
+    extended: true
+  })
+);
+
+app.use(
+  express.static(
+    path.join(ROOT, "public")
+  )
+);
+
+/*
+|--------------------------------------------------------------------------
+| DADOS TEMPORÁRIOS
+|--------------------------------------------------------------------------
+|
+| Nesta primeira versão os dados ficam
+| na memória enquanto o servidor estiver ligado.
+|
+*/
 
 const galleries = new Map();
+
 const photos = new Map();
+
 const selections = new Map();
+
 const sessions = new Set();
+
+/*
+|--------------------------------------------------------------------------
+| GERAR ID
+|--------------------------------------------------------------------------
+*/
 
 function createId() {
   return crypto.randomUUID();
 }
 
-function requireAdmin(req, res, next) {
-  const token = req.headers.authorization?.replace(
-    "Bearer ",
-    ""
-  );
+/*
+|--------------------------------------------------------------------------
+| AUTENTICAÇÃO DO ADMIN
+|--------------------------------------------------------------------------
+*/
 
-  if (!token || !sessions.has(token)) {
+function requireAdmin(
+  req,
+  res,
+  next
+) {
+
+  const authorization =
+    req.headers.authorization;
+
+  const token =
+    authorization
+      ?.replace("Bearer ", "");
+
+  if (
+    !token ||
+    !sessions.has(token)
+  ) {
+
     return res.status(401).json({
-      error: "Não autorizado."
+      error:
+        "Não autorizado."
     });
+
   }
 
   next();
@@ -61,13 +135,19 @@ function requireAdmin(req, res, next) {
 */
 
 const upload = multer({
+
   dest: TEMP_DIR,
 
   limits: {
-    fileSize: 30 * 1024 * 1024
+    fileSize:
+      30 * 1024 * 1024
   },
 
-  fileFilter: (req, file, cb) => {
+  fileFilter: (
+    req,
+    file,
+    callback
+  ) => {
 
     const allowedTypes = [
       "image/jpeg",
@@ -75,16 +155,24 @@ const upload = multer({
       "image/webp"
     ];
 
-    if (!allowedTypes.includes(file.mimetype)) {
-      return cb(
+    if (
+      !allowedTypes.includes(
+        file.mimetype
+      )
+    ) {
+
+      return callback(
         new Error(
           "Formato de imagem não permitido."
         )
       );
+
     }
 
-    cb(null, true);
+    callback(null, true);
+
   }
+
 });
 
 /*
@@ -93,55 +181,71 @@ const upload = multer({
 |--------------------------------------------------------------------------
 */
 
-function createWatermark(width, height) {
+function createWatermark(
+  width,
+  height
+) {
 
   const fontSize =
-    Math.max(28, Math.round(width / 20));
+    Math.max(
+      28,
+      Math.round(width / 20)
+    );
 
   return `
-    <svg
-      width="${width}"
-      height="${height}"
-      xmlns="http://www.w3.org/2000/svg"
-    >
+<svg
+  width="${width}"
+  height="${height}"
+  xmlns="http://www.w3.org/2000/svg"
+>
 
-      <style>
-        .watermark {
-          fill: white;
-          opacity: 0.35;
-          font-size: ${fontSize}px;
-          font-family: Arial, sans-serif;
-          font-weight: bold;
-        }
-      </style>
+  <style>
 
-      <text
-        x="${width / 2}"
-        y="${height / 2}"
-        text-anchor="middle"
-        dominant-baseline="middle"
-        transform="
-          rotate(
-            -25
-            ${width / 2}
-            ${height / 2}
-          )
-        "
-        class="watermark"
-      >
-        MINHA MARCA
-      </text>
+    .watermark {
+      fill: white;
+      opacity: 0.35;
+      font-size: ${fontSize}px;
+      font-family: Arial, sans-serif;
+      font-weight: bold;
+    }
 
-    </svg>
-  `;
+  </style>
+
+  <text
+    x="${width / 2}"
+    y="${height / 2}"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    transform="
+      rotate(
+        -25
+        ${width / 2}
+        ${height / 2}
+      )
+    "
+    class="watermark"
+  >
+    MINHA MARCA
+  </text>
+
+</svg>
+`;
+
 }
+
+/*
+|--------------------------------------------------------------------------
+| CRIAR FOTO COM MARCA D'ÁGUA
+|--------------------------------------------------------------------------
+*/
 
 async function createWatermarkedPhoto(
   input,
   output
 ) {
 
-  const image = sharp(input);
+  const image =
+    sharp(input);
 
   const metadata =
     await image.metadata();
@@ -171,6 +275,7 @@ async function createWatermarkedPhoto(
       quality: 85
     })
     .toFile(output);
+
 }
 
 /*
@@ -179,41 +284,46 @@ async function createWatermarkedPhoto(
 |--------------------------------------------------------------------------
 */
 
-app.post("/api/login", (req, res) => {
+app.post(
+  "/api/login",
+  (req, res) => {
 
-  const { password } =
-    req.body;
+    const password =
+      req.body.password;
 
-  const adminPassword =
-    process.env.ADMIN_PASSWORD ||
-    "123456";
+    const adminPassword =
+      process.env.ADMIN_PASSWORD ||
+      "123456";
 
-  if (
-    !password ||
-    password !== adminPassword
-  ) {
+    if (
+      !password ||
+      password !== adminPassword
+    ) {
 
-    return res.status(401).json({
-      error: "Senha incorreta."
+      return res.status(401).json({
+        error:
+          "Senha incorreta."
+      });
+
+    }
+
+    const token =
+      crypto
+        .randomBytes(32)
+        .toString("hex");
+
+    sessions.add(token);
+
+    res.json({
+      token
     });
 
   }
-
-  const token =
-    crypto.randomBytes(32)
-      .toString("hex");
-
-  sessions.add(token);
-
-  res.json({
-    token
-  });
-
-});
+);
 
 /*
 |--------------------------------------------------------------------------
-| CRIAR GALERIA
+| LISTAR GALERIAS
 |--------------------------------------------------------------------------
 */
 
@@ -231,15 +341,24 @@ app.get(
   }
 );
 
+/*
+|--------------------------------------------------------------------------
+| CRIAR GALERIA
+|--------------------------------------------------------------------------
+*/
+
 app.post(
   "/api/galleries",
   requireAdmin,
   (req, res) => {
 
-    const { name } =
-      req.body;
+    const name =
+      req.body.name;
 
-    if (!name) {
+    if (
+      !name ||
+      !name.trim()
+    ) {
 
       return res.status(400).json({
         error:
@@ -249,10 +368,14 @@ app.post(
     }
 
     const gallery = {
+
       id: createId(),
+
       name: name.trim(),
+
       createdAt:
         new Date().toISOString()
+
     };
 
     galleries.set(
@@ -260,7 +383,9 @@ app.post(
       gallery
     );
 
-    res.json(gallery);
+    res.json(
+      gallery
+    );
 
   }
 );
@@ -294,20 +419,31 @@ app.get(
         photos.values()
       )
       .filter(
-        photo =>
+        (photo) =>
           photo.galleryId ===
           gallery.id
       )
-      .map(photo => ({
-        id: photo.id,
-        filename: photo.filename,
-        url:
-          `/images/${photo.filename}`
-      }));
+      .map(
+        (photo) => ({
+
+          id: photo.id,
+
+          filename:
+            photo.filename,
+
+          url:
+            `/images/${photo.filename}`
+
+        })
+      );
 
     res.json({
+
       gallery,
-      photos: galleryPhotos
+
+      photos:
+        galleryPhotos
+
     });
 
   }
@@ -322,7 +458,10 @@ app.get(
 app.post(
   "/api/galleries/:galleryId/photos",
   requireAdmin,
-  upload.array("photos", 100),
+  upload.array(
+    "photos",
+    100
+  ),
   async (req, res) => {
 
     const gallery =
@@ -378,38 +517,48 @@ app.post(
           );
 
         /*
-         * Guarda o original
-         */
+        | Salvar original
+        */
 
-        await sharp(file.path)
-          .jpeg({
-            quality: 95
-          })
-          .toFile(
-            originalPath
-          );
+        await sharp(
+          file.path
+        )
+        .jpeg({
+          quality: 95
+        })
+        .toFile(
+          originalPath
+        );
 
         /*
-         * Cria a versão
-         * com marca d'água
-         */
+        | Criar versão com marca d'água
+        */
 
         await createWatermarkedPhoto(
           file.path,
           watermarkedPath
         );
 
+        /*
+        | Apagar arquivo temporário
+        */
+
         fs.unlinkSync(
           file.path
         );
 
         const photo = {
+
           id: photoId,
+
           galleryId:
             gallery.id,
+
           filename,
+
           createdAt:
             new Date().toISOString()
+
         };
 
         photos.set(
@@ -417,19 +566,28 @@ app.post(
           photo
         );
 
-        created.push(photo);
+        created.push(
+          photo
+        );
 
       }
 
       res.json({
+
         message:
           `${created.length} foto(s) enviada(s).`,
-        photos: created
+
+        photos:
+          created
+
       });
 
     } catch (error) {
 
-      console.error(error);
+      console.error(
+        "Erro ao processar fotos:",
+        error
+      );
 
       res.status(500).json({
         error:
@@ -443,7 +601,7 @@ app.post(
 
 /*
 |--------------------------------------------------------------------------
-| FOTOS COM MARCA D'ÁGUA
+| SERVIR FOTOS COM MARCA D'ÁGUA
 |--------------------------------------------------------------------------
 */
 
@@ -486,8 +644,9 @@ app.post(
       `${clientId}:${photo.id}`;
 
     const current =
-      selections.get(key) ||
-      false;
+      selections.get(
+        key
+      ) || false;
 
     const selected =
       !current;
@@ -506,7 +665,7 @@ app.post(
 
 /*
 |--------------------------------------------------------------------------
-| FOTOS SELECIONADAS
+| LISTAR FOTOS SELECIONADAS
 |--------------------------------------------------------------------------
 */
 
@@ -518,7 +677,10 @@ app.get(
     const result = [];
 
     for (
-      const [key, selected]
+      const [
+        key,
+        selected
+      ]
       of selections.entries()
     ) {
 
@@ -526,11 +688,16 @@ app.get(
         continue;
       }
 
+      const parts =
+        key.split(":");
+
       const photoId =
-        key.split(":")[1];
+        parts[1];
 
       const photo =
-        photos.get(photoId);
+        photos.get(
+          photoId
+        );
 
       if (
         photo &&
@@ -538,20 +705,24 @@ app.get(
           req.params.galleryId
       ) {
 
-        result.push(photo);
+        result.push(
+          photo
+        );
 
       }
 
     }
 
-    res.json(result);
+    res.json(
+      result
+    );
 
   }
 );
 
 /*
 |--------------------------------------------------------------------------
-| DOWNLOAD
+| DOWNLOAD DA FOTO COM MARCA D'ÁGUA
 |--------------------------------------------------------------------------
 */
 
@@ -565,9 +736,11 @@ app.get(
       );
 
     if (!photo) {
+
       return res.status(404).send(
         "Foto não encontrada."
       );
+
     }
 
     const file =
@@ -576,68 +749,108 @@ app.get(
         photo.filename
       );
 
-    res.download(file);
+    if (!fs.existsSync(file)) {
+
+      return res.status(404).send(
+        "Arquivo não encontrado."
+      );
+
+    }
+
+    res.download(
+      file
+    );
 
   }
 );
 
 /*
 |--------------------------------------------------------------------------
-| PÁGINAS
+| PÁGINA INICIAL
 |--------------------------------------------------------------------------
 */
 
-app.get("/", (req, res) => {
+app.get(
+  "/",
+  (req, res) => {
 
-  res.sendFile(
-    path.join(
-      ROOT,
-      "public",
-      "index.html"
-    )
-  );
+    res.sendFile(
+      path.join(
+        ROOT,
+        "public",
+        "index.html"
+      )
+    );
 
-});
-
-app.get("/admin", (req, res) => {
-
-  res.sendFile(
-    path.join(
-      ROOT,
-      "public",
-      "admin.html"
-    )
-  );
-
-});
-
-app.get("/galeria/:id", (req, res) => {
-
-  res.sendFile(
-    path.join(
-      ROOT,
-      "public",
-      "gallery.html"
-    )
-  );
-
-});
+  }
+);
 
 /*
 |--------------------------------------------------------------------------
-| ERROS
+| PAINEL ADMINISTRATIVO
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  "/admin",
+  (req, res) => {
+
+    res.sendFile(
+      path.join(
+        ROOT,
+        "public",
+        "admin.html"
+      )
+    );
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| GALERIA DO CLIENTE
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  "/galeria/:id",
+  (req, res) => {
+
+    res.sendFile(
+      path.join(
+        ROOT,
+        "public",
+        "gallery.html"
+      )
+    );
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| TRATAMENTO DE ERROS
 |--------------------------------------------------------------------------
 */
 
 app.use(
-  (error, req, res, next) => {
+  (
+    error,
+    req,
+    res,
+    next
+  ) => {
 
-    console.error(error);
+    console.error(
+      error
+    );
 
     res.status(500).json({
+
       error:
         error.message ||
         "Erro interno do servidor."
+
     });
 
   }
@@ -654,22 +867,29 @@ app.listen(
   () => {
 
     console.log("");
+
     console.log(
       "================================"
     );
+
     console.log(
-      "       FOTO GALERIA"
+      "         FOTO GALERIA"
     );
+
     console.log(
       "================================"
     );
+
     console.log("");
+
     console.log(
       `Site: http://localhost:${PORT}`
     );
+
     console.log(
       `Admin: http://localhost:${PORT}/admin`
     );
+
     console.log("");
 
   }
